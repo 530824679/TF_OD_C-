@@ -1,45 +1,40 @@
-#include <tensorflow/core/platform/env.h>
-#include <tensorflow/core/public/session.h>
-#include <tensorflow/core/protobuf/meta_graph.pb.h>
-#include <iostream>
+#include <string>
+#include <vector>
 
-using namespace std;
-using namespace tensorflow;
+// ros include
+#include <ros/ros.h>
+#include <ros/package.h>
+#include "inference.h"
 
 
-int main()
+int main(int argc, char **argv)
 {
-    // set up input paths
-    const string graph_file = "/home/chenwei/HDD/Project/Complex-YOLOv2/checkpoints/model.ckpt-18.meta";
-    const string checkpoints_file = "/home/chenwei/HDD/Project/Complex-YOLOv2/checkpoints/model.ckpt-18";
+    std::string model_path = "/home/chenwei/HDD/Project/TF_OD_C_Plus_Plus/model/frozen_model.pb";
+    std::string input_op_name = "inputs";
+    std::vector<std::string> output_op_name;
+    output_op_name.push_back("reorg_layer/obj_probs");
+    output_op_name.push_back("reorg_layer/class_probs");
+    output_op_name.push_back("reorg_layer/bboxes_probs");
 
-    // create session
-    Session* session;
-    Status status = NewSession(SessionOptions(), &session);
-    if (!status.ok()) {
-        cout << status.ToString() << "\n";
-        throw runtime_error("Could not create Tensorflow session.");
-    }
-
-    // read graph in the protobuf
-    MetaGraphDef graph_def;
-    Status status_od_net = ReadBinaryProto(Env::Default(), graph_file, &graph_def);
-    if (!status_od_net.ok())
+    try
     {
-        throw std::runtime_error("Error reading graph definition from " + graph_file + ": " + status_od_net.ToString());
+        ros::init(argc, argv, "TF_OD_NODE");
+        ros::NodeHandle nh;
+        Inference inf(nh, model_path, input_op_name, output_op_name);
+        ROS_INFO("[%s]: Start TF OD ROS loop.\n", __func__);
+
+        ros::spin();
     }
-
-    // add the graph to the session
-    status_od_net = session->Create(graph_def.graph_def());
-
-    // read weights from the saved checkpoints
-    Tensor checkpoint_path_tensor(DT_STRING, TensorShape());
-    checkpoint_path_tensor.scalar<std::string>()() = checkpoints_file;
-    status_od_net = session->Run(
-            {{graph_def.saver_def().filename_tensor_name(), checkpoint_path_tensor}, },
-            {},
-            {graph_def.saver_def().restore_op_name()},
-            nullptr);
+    catch (std::exception& e)
+    {
+        ROS_ERROR("[%s]: EXCEPTION '[%d]'.\n", __func__, e.what());
+        return 1;
+    }
+    catch (...)
+    {
+        ROS_ERROR("[%s]: caught non-std EXCEPTION.\n", __func__);
+        return 1;
+    }
 
 
 
