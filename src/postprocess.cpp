@@ -58,7 +58,7 @@ std::vector<int> PostProcess::argsort(const std::vector<float>& scores)
         idx[i] = i;
     }
 
-    std::sort(idx.begin(), idx.end(), [&scores](int i1, int i2){return scores[i1] < scores[i2];});
+    std::sort(idx.begin(), idx.end(), [&scores](int i1, int i2){return scores[i1] > scores[i2];});
 
     return idx;
 }
